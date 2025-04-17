@@ -1,19 +1,16 @@
 import mongoose from "mongoose";
+import dotenv from 'dotenv';
 
-const db = async(req, res, next) => {
+dotenv.config();
+
+
+const db = async(next) => {
   try {
-    await mongoose.connect('mongodb://127.0.0.1:27017/reactAuth')
-    console.log("DB Connection successFul!");
-    
-    next();
+    await mongoose.connect(process.env.DATABASE_URL).then(() => console.log("DB Connection successFul!"));
   } catch (error) {
-    res.status(401).send({
-      message: "Db connection failed!",
-      err,
-      success: false,
-    })
+    console.log("Db connection failed!!", error)
     process.exit(1)
-    }
+    } 
 }
 
 export default db;

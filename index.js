@@ -30,7 +30,7 @@ app.use(cors(corsOptions));
 
 app.use("/reactAuth/v1", route)
 
-db()
+await db()
 
 app.listen(port, () => {
   console.log(`App is listening to port: ${port}`)
