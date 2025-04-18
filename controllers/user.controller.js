@@ -85,6 +85,7 @@ export const registerController = async (req, res) => {
 export const verifyUser = async(req, res) => {
     try {
         const { token } = req.params;
+        console.log(`token : ${token}`)
     if(!token){
         return res.status(400).send({
             message: "Token doesn't exist!",
