@@ -2,6 +2,8 @@ import { User } from "../models/User.models.js";
 import crypto from "crypto";
 import nodemailer from "nodemailer";
 import dotenv from "dotenv";
+import bcrypt from "bcryptjs";
+import jwt from 'jsonwebtoken'
 
 dotenv.config();
 
@@ -56,7 +58,6 @@ export const registerController = async (req, res) => {
       },
     });
 
-
     const configOptions = {
       from: '"Maddison Foo Koch 👻" <maddison53@ethereal.email>',
       to: user.email, // list of receivers
@@ -82,36 +83,89 @@ export const registerController = async (req, res) => {
   }
 };
 
-export const verifyUser = async(req, res) => {
-    try {
-        const { token } = req.params;
-        console.log(`token : ${token}`)
-    if(!token){
-        return res.status(400).send({
-            message: "Token doesn't exist!",
-            success: false,
-        });
+export const verifyUser = async (req, res) => {
+  try {
+    const { token } = req.params;
+    console.log(`token : ${token}`);
+    if (!token) {
+      return res.status(400).send({
+        message: "Token doesn't exist!",
+        success: false,
+      });
     }
-    const user = await User.findOne({verificationToken: token});
-    if(!user){
-        return res.status(400).send({
-            message: "invalid url!",
-            success: false,
-        });
+    const user = await User.findOne({ verificationToken: token });
+    if (!user) {
+      return res.status(400).send({
+        message: "invalid url!",
+        success: false,
+      });
     }
     user.isVerified = true;
-    user.verificationToken = '';
-    await user.save()
+    user.verificationToken = "";
+    await user.save();
 
     res.status(201).send({
-        message: "User verification successful!",
-        success: true,
+      message: "User verification successful!",
+      success: true,
     });
-    } catch (error) {
-        return res.status(400).send({
-            message: "Verifiaction failed!",
-            success: false,
-            error,
-        })
+  } catch (error) {
+    return res.status(400).send({
+      message: "Verifiaction failed!",
+      success: false,
+      error,
+    });
+  }
+};
+
+export const loginController = async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    if (!email || !password) {
+      return res.status(500).send({
+        message: "All fields are required!",
+        success: false,
+      });
     }
-}
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).send({
+        message: "User doesn't exist witht the provided email!",
+        success: false,
+      });
+    }
+    const isMatched = await bcrypt.compare(password, user.password);
+    if (!isMatched) {
+      return res.status(401).send({
+        message: "Invalid password!",
+        success: false,
+      });
+    }
+    const token = jwt.sign(
+      {
+        id: user._id,
+        username: user.username,
+        email: user.email,
+      },
+      process.env.SECRET,
+      {
+        expiresIn: "24h",
+      }
+    );
+
+    const cookieOptions = {
+        httpOnly: false,
+        maxAge: 24* 60 * 60* 1000,
+    }
+    res.cookie("token",token, cookieOptions);
+    res.status(201).send({
+        message: "LoggedIn successful",
+        success: true,
+    })
+  } catch (error) {
+    return res.status(500).send({
+        message: "Some error occured while loggign in!",
+        error,
+        success: false,
+    })
+  }
+};

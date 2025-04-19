@@ -1,11 +1,11 @@
 import express from 'express'
-import { registerController, verifyUser } from '../controllers/user.controller.js';
+import { loginController, registerController, verifyUser } from '../controllers/user.controller.js';
 
-const app = express()
 
 const router = express.Router();
 
 router.post('/register', registerController)
 router.get("/verify/:token", verifyUser)
+router.post("/login", loginController)
 
 export default router;

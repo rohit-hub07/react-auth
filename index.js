@@ -3,6 +3,7 @@ import dotenv from "dotenv";
 import db from "./database/db.js";
 import cors from "cors";
 import router from "./routes/user.routes.js";
+import cookieParser from "cookie-parser";
 
 //express for routing
 const app = express();
@@ -25,7 +26,8 @@ const corsOptions = {
 };
 //setting up cors and restricting requuests from other origin
 app.use(cors(corsOptions));
-
+//cookie parser to parse cookies
+app.use(cookieParser())
 app.use("/reactAuth/v1", router);
 
 const startServer = async () => {
