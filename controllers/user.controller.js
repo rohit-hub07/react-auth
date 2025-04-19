@@ -3,7 +3,7 @@ import crypto from "crypto";
 import nodemailer from "nodemailer";
 import dotenv from "dotenv";
 import bcrypt from "bcryptjs";
-import jwt from 'jsonwebtoken'
+import jwt from "jsonwebtoken";
 
 dotenv.config();
 
@@ -86,7 +86,6 @@ export const registerController = async (req, res) => {
 export const verifyUser = async (req, res) => {
   try {
     const { token } = req.params;
-    console.log(`token : ${token}`);
     if (!token) {
       return res.status(400).send({
         message: "Token doesn't exist!",
@@ -104,7 +103,7 @@ export const verifyUser = async (req, res) => {
     user.verificationToken = "";
     await user.save();
 
-    res.status(201).send({
+    res.status(200).send({
       message: "User verification successful!",
       success: true,
     });
@@ -153,19 +152,153 @@ export const loginController = async (req, res) => {
     );
 
     const cookieOptions = {
-        httpOnly: false,
-        maxAge: 24* 60 * 60* 1000,
-    }
-    res.cookie("token",token, cookieOptions);
-    res.status(201).send({
-        message: "LoggedIn successful",
-        success: true,
-    })
+      httpOnly: false,
+      maxAge: 24 * 60 * 60 * 1000,
+    };
+    res.cookie("token", token, cookieOptions);
+    res.status(200).send({
+      message: "LoggedIn successful",
+      success: true,
+    });
   } catch (error) {
     return res.status(500).send({
-        message: "Some error occured while loggign in!",
-        error,
+      message: "Some error occured while loggign in!",
+      error,
+      success: false,
+    });
+  }
+};
+
+export const forgetPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) {
+      return res.status(400).send({
+        message: "All fields are required!",
         success: false,
+      });
+    }
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(400).send({
+        message: "User doesn't exists!",
+        success: false,
+      });
+    }
+    const token = crypto.randomBytes(32).toString("hex");
+    user.resetPasswordToken = token;
+    user.resetPasswordExpiry = Date.now() + 10 * 60 * 1000;
+    // console.log("resetPasstoken: ", user.resetPasswordToken);
+
+    await user.save();
+    //sending mail
+    const transport = nodemailer.createTransport({
+      host: process.env.NODEMAILER_HOST,
+      port: process.env.NODEMAILER_PORT,
+      auth: {
+        user: process.env.NODEMAILER_USERNAME,
+        pass: process.env.NODEMAILER_PASSWORD,
+      },
+    });
+
+    const configOptions = {
+      from: '"Maddison Foo Koch 👻" <maddison53@ethereal.email>',
+      to: user.email, // list of receivers
+      subject: "Registration Link", // Subject line
+      text: `Reset Password: 
+      ${process.env.BASE_URL}/reactAuth/v1/resetpassword/${token}`,
+      html: `<h2>Registration link</h2>
+      <br>
+      ${process.env.BASE_URL}/reactAuth/v1/resetpassword/${token}`,
+    };
+    await transport.sendMail(configOptions);
+    res.status(200).send({
+      message: "Reset password link is sent to the email!",
+      success: true,
+    });
+  } catch (error) {
+    return res.status(400).send({
+      message: "Something went wrong. Please try again!",
+      success: false,
+      error,
+    });
+  }
+};
+
+export const resetPasswordController = async (req, res) => {
+  try {
+    const { token } = req.params;
+    const { password } = req.body;
+    if (!token) {
+      return res.status(400).send({
+        message: "Invalid reset password link",
+        success: false,
+      });
+    }
+    const user = await User.findOne({
+      resetPasswordToken: token,
+      resetPasswordExpiry: { $gt: Date.now() },
+    });
+    // console.log("resetPasstoken: ", user.resetPasswordToken);
+    if (!user) {
+      return res.status(400).send({
+        message: "User doesn't exists!",
+        success: false,
+      });
+    }
+
+    user.password = password;
+    await user.save();
+    res.status(200).send({
+      message: "Password reset successfull!",
+      success: true,
+    });
+  } catch (error) {
+    return res.status(400).send({
+      message: "Reset password link is expired!",
+      success: false,
+      error,
+    });
+  }
+};
+
+export const getMeController = async (req, res) => {
+  try {
+    const user = await User.findById({ _id: req.user.id });
+    if (!user) {
+      return res.status(400).send({
+        message: "User doesn't exist! Please login first!",
+        success: false,
+      });
+    }
+    res.status(200).send({
+      user,
+      success: true,
+    });
+  } catch (error) {
+    return res.status(401).send({
+      message: "Please login!",
+      success: false,
+    });
+  }
+};
+
+export const logoutController = async (req, res) => {
+  try {
+    const cookieOptions = {
+      httpOnly: false,
+      maxAge: 24 * 60 * 60 * 1000,
+    };
+    res.cookie("token", " ", cookieOptions);
+    res.status(200).send({
+      message: "User logout successfull",
+      success: true,
+    })
+  } catch (error) {
+    return res.status(401).send({
+      message: "Please login first!",
+      success: false,
+      error,
     })
   }
 };

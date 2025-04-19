@@ -30,7 +30,7 @@ const userSchema = new Schema(
     resetPasswordToken: {
       type: String,
     },
-    resetPaswordExpiry: {
+    resetPasswordExpiry: {
       type: String,
     },
   },
